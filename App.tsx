@@ -18,6 +18,9 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
+import mqtt from 'mqtt/dist/mqtt';
+import { Client } from 'mqtt';
+import { IPublishPacket } from 'mqtt-packet';
 
 import {
   Colors,
@@ -27,31 +30,49 @@ import {
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
 
-const Section: React.FC<{
-  title: string;
-}> = ({children, title}) => {
-  const isDarkMode = useColorScheme() === 'dark';
+
+const MqttFeature: React.FC = () => {
+
+  const clientRef = React.useRef<Client|null>(null)
+  
+  const onReceivedMqttMessage = (topic:string, message: Buffer, packet: IPublishPacket):void => {
+    console.log(`mqtt client: message received from topic ${topic}`)
+  }
+
+  React.useEffect(() => {
+    console.log("MQTT client: connecting to broker...")
+    clientRef.current = mqtt.connect("ws://test.mosquitto.org:8080")
+
+    clientRef.current?.on('connect',() => {
+      console.log("MQTT client: connected")
+    })
+
+    clientRef.current?.on('end',() => {
+      console.log("MQTT client: end")
+    })
+
+    clientRef.current?.on('close',() => {
+      console.log("MQTT client: closed")
+    })
+
+    clientRef.current?.on('error',(error) => {
+      console.error("MQTT client: error", error)
+    })
+
+    clientRef.current?.on('message', onReceivedMqttMessage)
+
+    clientRef.current?.subscribe('123')
+
+    return () => {
+      console.log("MQTT client: clearing up...")
+      if (clientRef.current) {//} && clientRef.current.connected) {
+        clientRef.current.end()
+      }
+    }
+  })
+    
   return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
+    <Text>MQTT Client</Text>
   );
 };
 
@@ -64,31 +85,7 @@ const App = () => {
 
   return (
     <SafeAreaView style={backgroundStyle}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
+      <MqttFeature/>
     </SafeAreaView>
   );
 };
